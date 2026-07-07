@@ -1,0 +1,207 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block extrahead %}
+{{ block.super }}
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<script nomodule src="https://unpkg.com/@google/model-viewer/dist/model-viewer-legacy.js"></script>
+
+<!-- Подключаем ваш теперь уже заполненный файл логики -->
+<script src="{% static 'js/model-viewer.js' %}"></script>
+
+<style>
+    /* Сетка для карточек-окошек */
+    #changelist-form .results,
+    #changelist-form .results table {
+        display: block !important;
+        width: 100% !important;
+        border: none !important;
+        background: transparent !important;
+    }
+
+    #result_list tbody {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+        gap: 24px !important;
+        width: 100% !important;
+        padding: 15px 0 !important;
+    }
+
+    #result_list thead,
+    #result_list tfoot {
+        display: none !important;
+    }
+
+    #result_list tbody tr {
+        display: flex !important;
+        flex-direction: column !important;
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 14px !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important;
+        position: relative !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+    }
+
+    /* Эффект при наведении на карточку проекта */
+    #result_list tbody tr:hover {
+        transform: translateY(-6px) !important;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.09) !important;
+    }
+
+    /* Текстовая зона карточки */
+    #result_list td,
+    #result_list th {
+        display: block !important;
+        width: 100% !important;
+        padding: 12px 16px 14px 16px !important;
+        border: none !important;
+        box-sizing: border-box !important;
+        background: transparent !important;
+    }
+
+    /* ИСПРАВЛЕНИЕ БАГА №2: Скрываем лишнюю ячейку с фоном, в которой лежал чекбокс */
+    #result_list th.action-checkbox-column {
+        display: none !important;
+        padding: 0 !important;
+        height: 0 !important;
+    }
+
+    /* ИСПРАВЛЕНИЕ БАГА №1: Аккуратное позиционирование чекбокса в верхний левый угол */
+    #result_list .action-checkbox {
+        position: absolute !important;
+        top: 14px !important;
+        left: 14px !important;
+        z-index: 30 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: auto !important;
+    }
+
+    #result_list .action-checkbox input[type="checkbox"] {
+        margin: 0 !important;
+        cursor: pointer;
+    }
+
+    /* Стили контейнера для 3D-окошка */
+    .admin-3d-box {
+        display: block !important;
+        width: 100% !important;
+        height: 230px !important;
+        min-height: 230px !important;
+        background: #f8fafc !important;
+        /* Фоновый цвет карточки */
+        border-bottom: 1px solid #e2e8f0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        position: relative !important;
+    }
+
+    /* Стили для самого 3D плеера */
+    .admin-3d-box model-viewer {
+        width: 100% !important;
+        height: 100% !important;
+        display: block !important;
+
+        /* ИСПРАВЛЕНИЕ БАГА №3: Делаем фон самого плеера прозрачным, чтобы просвечивал фон карточки */
+        background-color: transparent !important;
+        --poster-color: transparent !important;
+
+        animation: fadeInModel 0.6s ease-in-out;
+    }
+
+    @keyframes fadeInModel {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .project-card-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .project-card-info {
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .project-card-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        background: #dcfce7;
+        color: #15803d;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 11px;
+        margin-top: 6px;
+    }
+
+    .project-card-badge.empty {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    /* НОВЫЙ СТАНДАРТ ТЕМНОЙ ТЕМЫ JAZZMIN (Bootstrap 5) */
+    /* Как только свитч переключит data-bs-theme в положение "dark", стили применятся автоматически */
+    [data-bs-theme="dark"] #result_list tbody tr {
+        background: #252d3a !important;
+        border: 1px solid #343a40 !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    [data-bs-theme="dark"] #result_list tbody tr:hover {
+        border-color: #ffffff !important;
+    }
+
+    [data-bs-theme="dark"] .project-card-title {
+        color: #ffffff !important;
+    }
+
+    [data-bs-theme="dark"] .project-card-info {
+        color: #a0aec0 !important;
+    }
+
+    [data-bs-theme="dark"] .admin-3d-box {
+        background: #1a222d !important;
+        border-bottom: 1px solid #343a40 !important;
+    }
+
+    [data-bs-theme="dark"] .project-card-badge {
+        background: #ffffff !important;
+        color: #1a1a1a !important;
+    }
+
+    [data-bs-theme="dark"] .project-card-badge.empty {
+        background: #252d3a !important;
+        color: #ffffff !important;
+        border: 1px solid #ffffff !important;
+    }
+
+    [data-bs-theme="dark"] #result_list td a {
+        color: #ffffff !important;
+        border-color: #ffffff !important;
+    }
+</style>
+
+
+{% endblock %}
+
+{% block content %}
+{{ block.super }}
+<!-- Весь кастомный инлайн JS удален, так как логика перенесена в статический файл и библиотеку Google -->
+{% endblock %}

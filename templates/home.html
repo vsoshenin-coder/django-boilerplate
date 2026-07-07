@@ -1,0 +1,341 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Платформа Проектов</title>
+
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <script nomodule src="https://unpkg.com/@google/model-viewer/dist/model-viewer-legacy.js"></script>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0b0f19;
+            font-family: sans-serif;
+        }
+
+        /* Контейнер для анимированного заголовка */
+        .header-container {
+            position: absolute;
+            top: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            pointer-events: none;
+            text-align: center;
+            width: 100%;
+        }
+
+        .assembling-title {
+            font-size: 3.5rem;
+            font-weight: 900;
+            letter-spacing: 5px;
+            color: #ffffff;
+            text-transform: uppercase;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Анимация сборки букв */
+        .assembling-title span {
+            display: inline-block;
+            opacity: 0;
+            transform: translate(var(--tw-x, 0), var(--tw-y, 0)) scale(3) rotate(var(--tw-r, 0deg));
+            animation: assembleLetter 1.8s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+        }
+
+        .subtitle {
+            color: #64748b;
+            font-size: 1.2rem;
+            margin-top: 10px;
+            opacity: 0;
+            animation: fadeInSubtitle 1s ease 1.5s forwards;
+        }
+
+        @keyframes assembleLetter {
+            to {
+                opacity: 1;
+                transform: translate(0, 0) scale(1) rotate(0deg);
+            }
+        }
+
+        @keyframes fadeInSubtitle {
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* === НАДЕЖНАЯ 3D-КАНВА (БЕЗ ИСКАЖЕНИЯ ПОЛИГОНОВ) === */
+        .canvas-viewport {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .models-ring {
+            position: relative;
+            width: 350px;
+            height: 350px;
+        }
+
+        /* Абсолютно стабильный держатель 3D-модели */
+        .floating-model-holder {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: transparent !important;
+            border: none !important;
+            cursor: pointer;
+            will-change: transform, opacity;
+            transition: filter 0.4s ease, opacity 0.4s ease;
+        }
+
+        /* Мягкое неоновое свечение вокруг парящего объекта */
+        .floating-model-holder:hover {
+            filter: drop-shadow(0 0 35px rgba(255, 255, 255, 0.35));
+        }
+
+        /* Сама 3D модель Google model-viewer */
+        .floating-model-holder model-viewer {
+            width: 100%;
+            height: 100%;
+            background-color: transparent !important;
+            --poster-color: transparent !important;
+            pointer-events: none;
+        }
+
+        /* ВСПЛЫВАЮЩИЙ ТУЛТИП С НАЗВАНИЕМ ПРОЕКТА */
+        .project-tooltip {
+            position: absolute;
+            padding: 8px 16px;
+            background: rgba(15, 23, 42, 0.95);
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 200;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        .header-container {
+            position: absolute;
+            top: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            pointer-events: none;
+            text-align: center;
+            width: 100%;
+        }
+
+        .assembling-title {
+            font-size: 3.5rem;
+            font-weight: 900;
+            letter-spacing: 5px;
+            color: #ffffff;
+            text-transform: uppercase;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* СТАДИЯ 1: Базовое состояние букв при слетании */
+        .assembling-title span {
+            display: inline-block;
+            opacity: 0;
+            transform: translate(var(--tw-x, 0), var(--tw-y, 0)) scale(3) rotate(var(--tw-r, 0deg));
+
+            /* Запускаем ТОЛЬКО сборку букв */
+            animation: assembleLetter 1.8s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+        }
+
+        /* СТАДИЯ 2: Этот класс автоматически добавится через JavaScript через 1.8 сек */
+        .assembling-title.is-breathing span {
+            /* Принудительно фиксируем финальную точку сборки */
+            opacity: 1 !important;
+
+            /* Запускаем бесконечное дыхание волнообразно */
+            animation: letterBreathing 5s ease-in-out infinite alternate;
+            animation-delay: var(--breath-delay) !important;
+            /* Уникальная задержка для волны */
+        }
+
+        .subtitle {
+            color: #64748b;
+            font-size: 1.2rem;
+            margin-top: 10px;
+            opacity: 0;
+            animation: fadeInSubtitle 1s ease 1.5s forwards;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Контейнер заголовка -->
+    <div class="header-container">
+        <h1 class="assembling-title" id="title">СТУДЕНЧЕСКИЕ ПРОЕКТЫ</h1>
+        <div class="subtitle">Интерактивное 3D-пространство работ</div>
+    </div>
+
+    <!-- Тултип, следующий за мышкой -->
+    <div class="project-tooltip" id="tooltip"></div>
+
+    <!-- 3D Пространство -->
+    <div class="canvas-viewport" id="viewport">
+        <div class="models-ring" id="ring">
+
+            <!-- Выводим 3D-модели из вашего Django JSON -->
+            {% for project in projects_data_json %}
+            <div class="floating-model-holder" data-title="{{ project.title }}"
+                onclick="window.location.href='/projects/{{ project.id }}/'">
+
+                <!-- Нативное авто-вращение внутри самого WebGL-контекста -->
+                <model-viewer src="{{ project.model_file }}" auto-rotate auto-rotate-delay="0"
+                    rotation-per-second="25deg" camera-controls bounds="tight" interaction-prompt="none"
+                    shadow-intensity="0.7" touch-action="none">
+                </model-viewer>
+
+            </div>
+            {% empty %}
+            <div style="color: #64748b; text-align: center; font-size: 1.2rem; width: 100vw;">
+                Нет загруженных 3D-моделей
+            </div>
+            {% endfor %}
+
+        </div>
+    </div>
+
+    <script>
+        // === 1. АНИМАЦИЯ БУКВ ЗАГОЛОВКА ===
+        const titleEl = document.getElementById("title");
+        if (titleEl) {
+            const text = titleEl.innerText;
+            titleEl.innerHTML = "";
+            [...text].forEach((char) => {
+                const span = document.createElement("span");
+                span.innerText = char === " " ? "\u00A0" : char;
+                if (char !== " ") {
+                    span.style.setProperty("--tw-x", (Math.random() - 0.5) * 800 + "px");
+                    span.style.setProperty("--tw-y", (Math.random() - 0.5) * 600 + "px");
+                    span.style.setProperty("--tw-r", (Math.random() - 0.5) * 360 + "deg");
+                    span.style.animationDelay = Math.random() * 0.4 + "s";
+                }
+                titleEl.appendChild(span);
+            });
+        }
+
+        // === 2. СТАБИЛЬНЫЙ МАТЕМАТИЧЕСКИЙ ДВИЖОК ЭКРАННОЙ КАРУСЕЛИ ===
+        const viewport = document.getElementById('viewport');
+        const models = document.querySelectorAll('.floating-model-holder');
+        const totalModels = models.length;
+        const tooltip = document.getElementById('tooltip');
+
+        let rotationAngle = 0;
+        let activeHoveredModel = null;
+
+        // Настройки эллипса движения на экране (в пикселях)
+        const radiusX = 520;  // Ширина разлёта моделей по горизонтали
+        const radiusY = 80;   // Высота перспективы (наклон круга)
+
+        // ИСПРАВЛЕНО: Убрали глобальные блокировки viewport.addEventListener('mouseenter'/'mouseleave')
+
+        function update3DCarousel() {
+            // Карусель крутится ВСЕГДА, пока мышка не наведена на КОНКРЕТНУЮ модель
+            if (!activeHoveredModel) {
+                rotationAngle -= 0.0035; // Скорость базового вращения
+            } else {
+                rotationAngle -= 0.0005; // При наведении на модель карусель не замирает намертво, а изящно замедляется в 7 раз
+            }
+
+            models.forEach((model, index) => {
+                const angle = (index / totalModels) * Math.PI * 2 + rotationAngle;
+                const waveY = Math.sin(Date.now() * 0.0015 + index * 1.5) * 15;
+
+                const x = Math.sin(angle) * radiusX;
+                const zFactor = Math.cos(angle);
+                const y = zFactor * radiusY + waveY;
+
+                let scale = 1.0 + zFactor * 0.35;
+
+                if (activeHoveredModel === model) {
+                    scale *= 1.4; // Увеличение на 40% при наведении
+                }
+
+                model.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+                model.style.zIndex = Math.round((zFactor + 1) * 1000);
+                model.style.opacity = 0.4 + (zFactor + 1) * 0.3;
+            });
+
+            requestAnimationFrame(update3DCarousel);
+        }
+
+        if (totalModels > 0) {
+            update3DCarousel();
+        }
+
+        // === 3. ИСПРАВЛЕННАЯ ТОЧЕЧНАЯ ЛОГИКА НАВЕДЕНИЯ НА МОДЕЛИ ===
+        models.forEach((model) => {
+            // Теперь триггер срабатывает только тогда, когда курсор касается полигонов модели
+            model.addEventListener('mouseenter', () => {
+                activeHoveredModel = model;
+                tooltip.innerText = model.getAttribute('data-title');
+                tooltip.style.opacity = '1';
+            });
+
+            model.addEventListener('mouseleave', () => {
+                activeHoveredModel = null;
+                tooltip.style.opacity = '0';
+            });
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            tooltip.style.left = (e.clientX + 22) + 'px';
+            tooltip.style.top = (e.clientY + 12) + 'px';
+        });
+
+
+        // === 3. ЛОГИКА ТУЛТИПОВ ===
+        models.forEach((model) => {
+            model.addEventListener('mouseenter', () => {
+                activeHoveredModel = model;
+                tooltip.innerText = model.getAttribute('data-title');
+                tooltip.style.opacity = '1';
+            });
+
+            model.addEventListener('mouseleave', () => {
+                activeHoveredModel = null;
+                tooltip.style.opacity = '0';
+            });
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            tooltip.style.left = (e.clientX + 22) + 'px';
+            tooltip.style.top = (e.clientY + 12) + 'px';
+        });
+    </script>
+
+</body>
+
+</html>

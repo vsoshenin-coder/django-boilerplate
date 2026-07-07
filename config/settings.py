@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,6 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -41,7 +43,9 @@ INSTALLED_APPS = [
     "allauth",
     "allauth.account",
     "accounts",
+    'projects',
     "allauth.socialaccount",
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -52,25 +56,28 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [str(BASE_DIR.joinpath("templates"))],
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        # Указываем Django искать шаблоны в нашей глобальной папке
+        'DIRS': [os.path.join(BASE_DIR, 'templates')], 
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
             ],
         },
     },
 ]
+
 
 WSGI_APPLICATION = "config.wsgi.application"
 
@@ -79,15 +86,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",  # changed from sqlite
-        "NAME": "postgres",  # development settings, will change in production
-        "USER": "postgres",  # development settings, will change in production
-        "PASSWORD": "postgres",  # development settings, will change in production
-        "HOST": "db",
-        "PORT": 5432,
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
@@ -111,9 +115,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "ru-ru"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Moscow"
 
 USE_I18N = True
 
@@ -126,6 +130,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = "/static/"
+
+# Указываем Django точный путь к вашей корневой папке static
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+
+# Папка, куда Django будет собирать всю статику при деплое (нужна для работы AppDirectoriesFinder)
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
@@ -141,7 +153,9 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",  # this how admins will log in to the admin site
     "allauth.account.auth_backends.AuthenticationBackend",  # this how users log in
 ]
-LOGIN_REDIRECT_URL = "home"  # change to desired url name
+# Вместо фиксированной страницы отправляем пользователя на наш умный фильтр ролей
+LOGIN_REDIRECT_URL = 'dashboard_redirect'
+
 LOGOUT_REDIRECT_URL = "home"  # change to desired url name
 ACCOUNT_SESSION_REMEMBER = True  # remember user via sessions
 ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = False  # preferred UX
@@ -159,3 +173,79 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 # email
 # email will go to console for now, need to change in production
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+AUTH_USER_MODEL = 'accounts.CustomUser'
+
+# Пути к кастомным формам
+ACCOUNT_FORMS = {
+    'signup': 'accounts.forms.CustomSignupForm',
+    'login': 'accounts.forms.CustomLoginForm',
+}
+
+JAZZMIN_SETTINGS = {
+    "site_title": "Панель 3D",
+    "site_header": "Администрация",
+    "site_brand": "Управление",
+    "welcome_sign": "Авторизация",
+    "copyright": "3D платформа",
+    "show_ui_builder": False,
+    "search_model": ["accounts.CustomUser"],
+    "user_avatar": None,
+    
+    # ВОЗВРАЩАЕМ КОРРЕКТНЫЙ РЕЖИМ СВИТЧА:
+    "theme_cls": "theme-switch", 
+    
+    "topmenu_links": [
+        {"name": "Перейти на сайт", "url": "home", "permissions": ["accounts.view_customuser"]}, 
+        # Убрали дублирующую текстовую кнопку-ссылку, так как теперь заработает нативная иконка в углу
+    ],
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "hide_apps": [],
+    "hide_models": [],
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "accounts.customuser": "fas fa-user",  
+        "auth.Group": "fas fa-users",
+        "projects.studentproject": "fas fa-cube", 
+    },
+    "default_icon_parents": "fas fa-chevron-circle-right",
+    "default_icon_children": "fas fa-circle",
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    
+    # ИСПРАВЛЕНИЕ БАГА С ФОНОМ «Управление»:
+    # Меняем "navbar-dark bg-dark" на прозрачно-темный класс. 
+    # Это уберет уродливый обрезающийся прямоугольник из левого верхнего угла!
+    "brand_colour": "navbar-dark bg-transparent",      
+    
+    "accent": "accent-dark",                     
+    "navbar": "navbar-light bg-white",           
+    "no_navbar_border": True,                    
+    "navbar_fixed": False,
+    "layout_options": ["sidebar_fixed"],
+    "sidebar": "sidebar-light-white",            
+    
+    # ИСПРАВЛЕНИЕ НЕРАБОЧЕЙ КНОПКИ ТЕМЫ:
+    # Вместо "default" ставим тему "cosmo". 
+    # Она идеально поддерживает черно-белый стиль и полностью разблокирует JS-код переключения тем!
+    "theme": "cosmo",                           
+    "default_theme_mode": "auto",                
+    
+    "button_classes": {
+        "primary": "btn-dark",                   
+        "secondary": "btn-outline-dark",         
+        "info": "btn-dark",
+        "warning": "btn-secondary",
+        "danger": "btn-danger",                  
+        "success": "btn-dark"
+    }
+}

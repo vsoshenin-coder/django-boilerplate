@@ -1,0 +1,82 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{ project.title }}</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            color: white;
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 25px;
+            border-radius: 12px;
+            z-index: 10;
+            max-width: 300px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Заставляем 3D-плеер растянуться на весь экран */
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Фикс текста бренда в сайдбаре */
+        .brand-link {
+            background-color: #1a1a1a !important;
+            /* Делаем шапку сайдбара строго черной в тон верхнего меню */
+            border-bottom: none !important;
+        }
+
+        .brand-link .brand-text {
+            color: #ffffff !important;
+            font-weight: 700 !important;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="info-panel">
+        <h2>{{ project.title }}</h2>
+        <p><b>Автор:</b> {{ project.student.username }}</p>
+        <p>{{ project.description }}</p>
+
+        {% if project.grade %}
+        <hr style="border-color: #444;">
+        <h3>Оценка: {{ project.grade }}</h3>
+        <p><i>Комментарий:</i> {{ project.teacher_comment }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Компонент отображения 3D-модели -->
+    <model-viewer src="{{ project.model_file.url }}" camera-controls auto-rotate shadow-intensity="1"
+        touch-action="pan-y">
+    </model-viewer>
+
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <script nomodule src="https://unpkg.com/@google/model-viewer/dist/model-viewer-legacy.js"></script>
+
+</body>
+
+</html>
