@@ -12,6 +12,11 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 from pathlib import Path
 import os
+# ПОДГОТОВКА К ОБЛАКУ: Импортируем инструменты для чтения переменных окружения и БД
+from decouple import config
+import dj_database_url
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,13 +25,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-(&r4r!@4m*dl^bwdo4g)h+v+3ba=ck2gx(0^@_@vsydhaj%rr^"
+# ПОДГОТОВКА К ОБЛАКУ: Секретный ключ теперь берется из окружения сервера
+SECRET_KEY = config('DJANGO_SECRET_KEY', default="django-insecure-(&r4r!@4m*dl^bwdo4g)h+v+3ba=ck2gx(0^@_@vsydhaj%rr^")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# ПОДГОТОВКА К ОБЛАКУ: На проде DEBUG всегда должен быть False
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = []
+# ПОДГОТОВКА К ОБЛАКУ: Сюда пишем домены (например: platform.ru, myplatform.amvera.ru) через запятую
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
 
 
 # Application definition
@@ -38,6 +44,8 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    # ПОДГОТОВКА К ОБЛАКУ: Добавляем storages для связи с S3 (установить: pip install django-storages boto3)
+    'storages',
     "django.contrib.staticfiles",
     "django.contrib.sites",
     "allauth",
@@ -50,13 +58,15 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # ПОДГОТОВКА К ОБЛАКУ: WhiteNoise для раздачи CSS/JS напрямую через Python/Gunicorn без Nginx
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'allauth.account.middleware.AccountMiddleware',
+    #'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -85,11 +95,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
+# ПОДГОТОВКА К ОБЛАКУ: Если в облаке задана DATABASE_URL, используем PostgreSQL/MySQL, иначе — локальный sqlite3
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600
+    )
 }
 
 
@@ -139,6 +150,24 @@ STATICFILES_DIRS = [
 # Папка, куда Django будет собирать всю статику при деплое (нужна для работы AppDirectoriesFinder)
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+
+# ПОДГОТОВКА К ОБЛАКУ: Настройка S3-хранилища для тяжелых 3D-моделей (Media-файлы)
+# На локальной машине (DEBUG=True) файлы будут сохраняться на диск, в облаке — улетать в S3 бакет.
+USE_S3 = config('USE_S3', default=False, cast=bool)
+
+if USE_S3:
+    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_ENDPOINT_URL = config('AWS_S3_ENDPOINT_URL')  # Важно для Yandex/Selectel/VK Cloud
+    AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default=None)
+    
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    AWS_QUERYSTRING_AUTH = False  # Отключает генерацию временных токенов для ссылок (чтобы ссылки на 3D были постоянными)
+else:
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
@@ -147,6 +176,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # all auth settings
 
 SITE_ID = 1  # all-auth supports multiple sites
+
+# Хак для Serverless: динамически подставляем ID сайта, если база данных пустая
+def get_site_id():
+    return 1
 
 
 AUTHENTICATION_BACKENDS = [
@@ -157,7 +190,7 @@ AUTHENTICATION_BACKENDS = [
 LOGIN_REDIRECT_URL = 'dashboard_redirect'
 
 LOGOUT_REDIRECT_URL = "home"  # change to desired url name
-ACCOUNT_SESSION_REMEMBER = True  # remember user via sessions
+ACCOUNT_SESSION_REMEMBER = 'always'  # remember user via sessions
 ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = False  # preferred UX
 ACCOUNT_USERNAME_REQUIRED = False  # preferred UX
 ACCOUNT_AUTHENTICATION_METHOD = "email"
@@ -167,23 +200,41 @@ ACCOUNT_EMAIL_VERIFICATION = "optional"  # can use as a welcome email as well
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 5
 ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 5
 ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 86400
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
-AUTH_USER_MODEL = "accounts.CustomUser"
 
-# email
-# email will go to console for now, need to change in production
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# ПОДГОТОВКА К ОБЛАКУ: Включаем HTTPS протокол только для продакшена
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http" if DEBUG else "https"
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
+
+# ПОДГОТОВКА К ОБЛАКУ: На проде отправляем почту через реальный SMTP сервер
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = config('EMAIL_HOST')
+    EMAIL_PORT = config('EMAIL_PORT', cast=int)
+    EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+    EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+
+# ПОДГОТОВКА К ОБЛАКУ: Настройки безопасности для HTTPS (включаются только на проде)
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+
 
 # Пути к кастомным формам
 ACCOUNT_FORMS = {
     'signup': 'accounts.forms.CustomSignupForm',
     'login': 'accounts.forms.CustomLoginForm',
 }
+
+# Храним сессии в зашифрованных Cookie, чтобы не вылетало из админки в Serverless
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 
 JAZZMIN_SETTINGS = {
     "site_title": "Панель 3D",
