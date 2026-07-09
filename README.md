@@ -1,13 +1,45 @@
-# A Minimalistic Modern Django Boilerplate
+# Платформа дистанционной сдачи учебных работ студентов с интерактивным 3D-просмотром
 
-This boilerplate is mainly for educational purposes. It is meant to be cloned as a starter code for future tutorials. But it could also be extended for full use in production or to quickly experiment with new Django ideas.
+Веб-приложение на базе фреймворка Django, предназначенное для автоматизации процесса отправки, проверки и интерактивного интерактивного мониторинга студенческих проектов. Ключевая особенность платформы — возможность загрузки и полноценного рендеринга трехмерных моделей непосредственно в окне браузера без использования стороннего софта.
 
-Fully featured boilerplates by nature are opinionated. This is not the goal here. This boilerplate has the minimal amount of code with minimal opinions. The idea is once you build and understand a basic example, you could swab parts of it with your own preferences, customize more complicated options, or simply build on top of this one. This is meant to replace the default startproject Django code.
+## Ключевой функционал
+*   **Контур студента:** личный кабинет, возможность загрузки файлов описания проектов и тяжелых 3D-моделей.
+*   **Контур преподавателя:** модернизированная панель управления (Django Jazzmin) для быстрого просмотра пула работ, выставления оценок и написания текстовых комментариев обратной связи.
+*   **3D-Визуализация:** Интеграция веб-компонента `<model-viewer>` для интерактивного просмотра бинарных 3D-файлов (формат `.glb`) на двух уровнях: облегченные карточки предпросмотра на главной странице и полноэкранный режим с поддержкой орбитального управления камерой (зум, вращение).
+*   **Безопасность:** Встроенный серверный валидатор расширений файлов, предотвращающий загрузку нерелевантного или вредоносного ПО.
+*   **DevOps-инфраструктура:** Полная контейнеризация приложения и изоляция хранилища медиаданных (Docker Volumes) для бесшовного деплоя в облачную инфраструктуру.
 
-## Usage
-1. Git clone https://github.com/Jonathan-Adly/django-boilerplate
-2. docker compose up -d --build
-3. docker compose exec web python manage.py migrate
-4. Hack away
+## Технологический стек
+*   **Backend:** Python 3, Django Framework, Django ORM, SQLite
+*   **Frontend:** HTML5, CSS3, JavaScript (Vanilla JS), Google `<model-viewer>` (WebGL / Three.js под капотом)
+*   **DevOps:** Docker, Docker Compose, Pipenv
 
-Don't forget to remove the "home" function in config/urls.py and use your own!
+## Архитектура проекта
+Проект спроектирован по модульному принципу (Low Coupling). Весь специфический функционал работы с 3D-сценами и моделями инкапсулирован внутри изолированного Django-приложения `projects/`. Основные конфигурационные файлы среды развертывания (`Dockerfile`, `docker-compose.yml`) вынесены в корень репозитория.
+
+В репозитории реализовано два независимых контура развертывания в зависимости от выбранной ветки проекта:
+
+### Вариант 1. Локальный запуск (Ветка `cloud` — среда разработки через Pipenv)
+Предназначен для локального тестирования, написания кода и отладки бэкенда без использования виртуализации.
+
+1. Переключитесь на ветку для локальной разработки:
+   ```bash
+   git checkout cloud
+   ```
+2. Установите менеджер зависимостей Pipenv (если не установлен) и разверните изолированную среду Python со всеми библиотеками из `Pipfile`:
+   ```bash
+   pip install pipenv
+   pipenv install
+   ```
+3. Активируйте виртуальное окружение, выполните миграции встроенной базы данных SQLite и запустите локальный сервер Django:
+   ```bash
+   pipenv shell
+   python manage.py migrate
+   python manage.py runserver
+   ```
+   *Платформа будет доступна по адресу:* `http://127.0.0`
+
+### Вариант 2. Облачный деплой (Ветка `main` — Production-ready через Docker)
+Стабильная конфигурация, оптимизированная под выгрузку на удаленный сервер (например, Yandex Cloud) с автоматической контейнеризацией.
+
+https://bbacl0vivkvfg8rmhila.containers.yandexcloud.net/
