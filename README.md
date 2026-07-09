@@ -41,5 +41,5 @@
 
 ### Вариант 2. Облачный деплой (Ветка `main` — Production-ready через Docker)
 Стабильная конфигурация, оптимизированная под выгрузку на удаленный сервер (например, Yandex Cloud) с автоматической контейнеризацией.
-
+(есть баги, которые нужно поправить, а именно перейти с serverless container на ВМ)
 https://bbacl0vivkvfg8rmhila.containers.yandexcloud.net/
